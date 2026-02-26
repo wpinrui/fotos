@@ -198,6 +198,18 @@ LRESULT Window::HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam) {
         }
         return 0;
 
+    case WM_RBUTTONDOWN:
+        if (m_app) {
+            m_app->ShowContextMenu(m_hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+        }
+        return 0;
+
+    case WM_COMMAND:
+        if (m_app) {
+            m_app->OnContextMenuCommand(LOWORD(wParam));
+        }
+        return 0;
+
     case WM_PAINT:
         if (m_app) {
             m_app->Render();

@@ -1723,3 +1723,70 @@ void App::Render() {
         m_renderer->Render();
     }
 }
+
+void App::ShowContextMenu(HWND hwnd, int screenX, int screenY) {
+    HMENU menu = CreatePopupMenu();
+    if (!menu) return;
+
+    bool hasImage = (m_currentImage != nullptr);
+    bool inEditMode = (m_editMode != EditMode::None);
+    UINT imageFlag = hasImage ? MF_ENABLED : MF_GRAYED;
+    UINT editSafeFlag = (hasImage && !inEditMode) ? MF_ENABLED : MF_GRAYED;
+
+    // File section
+    AppendMenuW(menu, MF_STRING, CMD_OPEN_IMAGE, L"Open Image...\tCtrl+O");
+    AppendMenuW(menu, MF_STRING, CMD_OPEN_FOLDER, L"Open Folder...\tCtrl+F");
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+
+    // Save section
+    AppendMenuW(menu, MF_STRING | imageFlag, CMD_SAVE, L"Save\tCtrl+S");
+    AppendMenuW(menu, MF_STRING | imageFlag, CMD_SAVE_AS, L"Save As...\tCtrl+Shift+S");
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+
+    // Clipboard section
+    AppendMenuW(menu, MF_STRING | imageFlag, CMD_COPY_CLIPBOARD, L"Copy to Clipboard\tCtrl+C");
+    AppendMenuW(menu, MF_STRING | editSafeFlag, CMD_SET_WALLPAPER, L"Set as Wallpaper\tCtrl+B");
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+
+    // Transform section
+    AppendMenuW(menu, MF_STRING | editSafeFlag, CMD_ROTATE_CW, L"Rotate CW\tR");
+    AppendMenuW(menu, MF_STRING | editSafeFlag, CMD_ROTATE_CCW, L"Rotate CCW\tShift+R");
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+
+    // View section
+    AppendMenuW(menu, MF_STRING | imageFlag, CMD_FIT_TO_WINDOW, L"Fit to Window\tF");
+    AppendMenuW(menu, MF_STRING | imageFlag, CMD_ACTUAL_SIZE, L"Actual Size\t1");
+    AppendMenuW(menu, MF_STRING, CMD_FULLSCREEN, L"Fullscreen\tF11");
+    AppendMenuW(menu, MF_SEPARATOR, 0, nullptr);
+
+    // Delete
+    AppendMenuW(menu, MF_STRING | editSafeFlag, CMD_DELETE, L"Delete\tDel");
+
+    // Show and handle
+    POINT pt = { screenX, screenY };
+    ClientToScreen(hwnd, &pt);
+    TrackPopupMenu(menu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwnd, nullptr);
+    DestroyMenu(menu);
+}
+
+void App::OnContextMenuCommand(UINT commandId) {
+    switch (commandId) {
+    case CMD_OPEN_IMAGE:    OpenFileDialog(); break;
+    case CMD_OPEN_FOLDER:   OpenFolderDialog(); break;
+    case CMD_SAVE:          SaveImage(); break;
+    case CMD_SAVE_AS:       SaveImageAs(); break;
+    case CMD_COPY_CLIPBOARD: CopyToClipboard(); break;
+    case CMD_SET_WALLPAPER: SetAsWallpaper(); break;
+    case CMD_ROTATE_CW:     RotateCW(); break;
+    case CMD_ROTATE_CCW:    RotateCCW(); break;
+    case CMD_FIT_TO_WINDOW: ResetZoom(); break;
+    case CMD_ACTUAL_SIZE:
+        if (m_renderer && m_currentImage) {
+            m_renderer->SetZoom(CalculateActualSizeZoom());
+            Invalidate();
+        }
+        break;
+    case CMD_FULLSCREEN:    ToggleFullscreen(); break;
+    case CMD_DELETE:        DeleteCurrentFile(); break;
+    }
+}

@@ -16,6 +16,22 @@ public:
     bool Initialize(HINSTANCE hInstance, int nCmdShow, const std::wstring& initialFile = L"");
     int Run();
 
+    // Context menu command IDs
+    enum ContextMenuCommand : UINT {
+        CMD_OPEN_IMAGE = 1001,
+        CMD_OPEN_FOLDER,
+        CMD_SAVE,
+        CMD_SAVE_AS,
+        CMD_COPY_CLIPBOARD,
+        CMD_SET_WALLPAPER,
+        CMD_ROTATE_CW,
+        CMD_ROTATE_CCW,
+        CMD_FIT_TO_WINDOW,
+        CMD_ACTUAL_SIZE,
+        CMD_FULLSCREEN,
+        CMD_DELETE,
+    };
+
     // Event handlers (called by Window)
     void OnKeyDown(UINT key);
     void OnKeyUp(UINT key);
@@ -26,6 +42,8 @@ public:
     void OnMouseMove(int x, int y);
     void OnResize(int width, int height);
     void Render();
+    void ShowContextMenu(HWND hwnd, int screenX, int screenY);
+    void OnContextMenuCommand(UINT commandId);
 
     // File operations
     void OpenFile(const std::wstring& filePath);
