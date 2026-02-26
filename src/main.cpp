@@ -23,7 +23,7 @@ int WINAPI wWinMain(
 
         App app;
         if (!app.Initialize(hInstance, nCmdShow, initialFile)) {
-            MessageBoxW(nullptr, L"Failed to initialize application", L"angel-foto", MB_ICONERROR);
+            MessageBoxW(nullptr, L"Failed to initialize application", L"fotos", MB_ICONERROR);
             return 1;
         }
 
@@ -32,11 +32,11 @@ int WINAPI wWinMain(
     catch (const std::exception& e) {
         std::wstring msg = L"Exception: ";
         msg += std::wstring(e.what(), e.what() + strlen(e.what()));
-        MessageBoxW(nullptr, msg.c_str(), L"angel-foto Error", MB_ICONERROR);
+        MessageBoxW(nullptr, msg.c_str(), L"fotos Error", MB_ICONERROR);
         return 1;
     }
     catch (...) {
-        MessageBoxW(nullptr, L"Unknown exception occurred", L"angel-foto Error", MB_ICONERROR);
+        MessageBoxW(nullptr, L"Unknown exception occurred", L"fotos Error", MB_ICONERROR);
         return 1;
     }
 }

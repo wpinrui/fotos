@@ -32,8 +32,8 @@ private:
     void ApplyDarkMode();
 
     // Window constants
-    static constexpr wchar_t WINDOW_CLASS_NAME[] = L"AngelFotoWindow";
-    static constexpr wchar_t WINDOW_TITLE[] = L"angel-foto";
+    static constexpr wchar_t WINDOW_CLASS_NAME[] = L"FotosWindow";
+    static constexpr wchar_t WINDOW_TITLE[] = L"fotos";
     static constexpr int INITIAL_WIDTH = 800;
     static constexpr int INITIAL_HEIGHT = 600;
     static constexpr float BASE_DPI = 96.0f;
