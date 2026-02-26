@@ -1779,19 +1779,20 @@ void App::ShowContextMenu(int screenX, int screenY) {
     DestroyMenu(menu);
 }
 
-void App::OnContextMenuCommand(UINT commandId) {
+bool App::OnContextMenuCommand(UINT commandId) {
     switch (commandId) {
-    case CMD_OPEN_IMAGE:    OpenFileDialog(); break;
-    case CMD_OPEN_FOLDER:   OpenFolderDialog(); break;
-    case CMD_SAVE:          SaveImage(); break;
-    case CMD_SAVE_AS:       SaveImageAs(); break;
-    case CMD_COPY_CLIPBOARD: CopyToClipboard(); break;
-    case CMD_SET_WALLPAPER: SetAsWallpaper(); break;
-    case CMD_ROTATE_CW:     RotateCW(); break;
-    case CMD_ROTATE_CCW:    RotateCCW(); break;
-    case CMD_FIT_TO_WINDOW: ResetZoom(); break;
-    case CMD_ACTUAL_SIZE:   SetActualSizeZoom(); break;
-    case CMD_FULLSCREEN:    ToggleFullscreen(); break;
-    case CMD_DELETE:        DeleteCurrentFile(); break;
+    case CMD_OPEN_IMAGE:    OpenFileDialog(); return true;
+    case CMD_OPEN_FOLDER:   OpenFolderDialog(); return true;
+    case CMD_SAVE:          SaveImage(); return true;
+    case CMD_SAVE_AS:       SaveImageAs(); return true;
+    case CMD_COPY_CLIPBOARD: CopyToClipboard(); return true;
+    case CMD_SET_WALLPAPER: SetAsWallpaper(); return true;
+    case CMD_ROTATE_CW:     RotateCW(); return true;
+    case CMD_ROTATE_CCW:    RotateCCW(); return true;
+    case CMD_FIT_TO_WINDOW: ResetZoom(); return true;
+    case CMD_ACTUAL_SIZE:   SetActualSizeZoom(); return true;
+    case CMD_FULLSCREEN:    ToggleFullscreen(); return true;
+    case CMD_DELETE:        DeleteCurrentFile(); return true;
+    default:                return false;
     }
 }

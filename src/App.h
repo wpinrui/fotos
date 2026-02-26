@@ -27,7 +27,7 @@ public:
     void OnResize(int width, int height);
     void Render();
     void ShowContextMenu(int screenX, int screenY);
-    void OnContextMenuCommand(UINT commandId);
+    bool OnContextMenuCommand(UINT commandId);
 
     // File operations
     void OpenFile(const std::wstring& filePath);
