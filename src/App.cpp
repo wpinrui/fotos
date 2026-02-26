@@ -1728,7 +1728,7 @@ void App::Render() {
     }
 }
 
-void App::ShowContextMenu(HWND hwnd, int clientX, int clientY) {
+void App::ShowContextMenu(int screenX, int screenY) {
     HMENU menu = CreatePopupMenu();
     if (!menu) return;
 
@@ -1766,10 +1766,16 @@ void App::ShowContextMenu(HWND hwnd, int clientX, int clientY) {
     // Delete
     AppendMenuW(menu, MF_STRING | editSafeFlag, CMD_DELETE, L"Delete\tDel");
 
-    // Show and handle
-    POINT pt = { clientX, clientY };
-    ClientToScreen(hwnd, &pt);
-    TrackPopupMenu(menu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwnd, nullptr);
+    // Handle keyboard invocation (Shift+F10 sends -1, -1)
+    if (screenX == -1 && screenY == -1) {
+        POINT pt;
+        GetCursorPos(&pt);
+        screenX = pt.x;
+        screenY = pt.y;
+    }
+
+    HWND hwnd = m_window->GetHwnd();
+    TrackPopupMenu(menu, TPM_RIGHTBUTTON, screenX, screenY, 0, hwnd, nullptr);
     DestroyMenu(menu);
 }
 

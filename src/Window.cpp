@@ -198,9 +198,9 @@ LRESULT Window::HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam) {
         }
         return 0;
 
-    case WM_RBUTTONDOWN:
+    case WM_CONTEXTMENU:
         if (m_app) {
-            m_app->ShowContextMenu(m_hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+            m_app->ShowContextMenu(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
         }
         return 0;
 
