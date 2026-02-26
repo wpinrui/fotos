@@ -26,6 +26,8 @@ public:
     void OnMouseMove(int x, int y);
     void OnResize(int width, int height);
     void Render();
+    void ShowContextMenu(int screenX, int screenY);
+    bool OnContextMenuCommand(UINT commandId);
 
     // File operations
     void OpenFile(const std::wstring& filePath);
@@ -55,6 +57,22 @@ private:
     // Edit modes (declared early for use in method signatures)
     enum class EditMode { None, Crop, Markup, Text, Erase };
 
+    // Context menu command IDs
+    enum ContextMenuCommand : UINT {
+        CMD_OPEN_IMAGE = 1001,
+        CMD_OPEN_FOLDER,
+        CMD_SAVE,
+        CMD_SAVE_AS,
+        CMD_COPY_CLIPBOARD,
+        CMD_SET_WALLPAPER,
+        CMD_ROTATE_CW,
+        CMD_ROTATE_CCW,
+        CMD_FIT_TO_WINDOW,
+        CMD_ACTUAL_SIZE,
+        CMD_FULLSCREEN,
+        CMD_DELETE,
+    };
+
     void LoadCurrentImage();
     void UpdateTitle();
     void NavigateNext();
@@ -68,6 +86,7 @@ private:
     void ZoomIn();
     void ZoomOut();
     void ResetZoom();
+    void SetActualSizeZoom();
     float CalculateActualSizeZoom() const;
 
     // Phase 2 features
