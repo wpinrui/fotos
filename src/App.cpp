@@ -580,6 +580,11 @@ void App::ResetZoom() {
     Invalidate();
 }
 
+void App::SetActualSizeZoom() {
+    m_renderer->SetZoom(CalculateActualSizeZoom());
+    Invalidate();
+}
+
 float App::CalculateActualSizeZoom() const {
     if (!m_currentImage) return 1.0f;
 
@@ -1413,8 +1418,7 @@ bool App::HandleZoomKey(UINT key, bool ctrl) {
         return true;
 
     case '1':
-        m_renderer->SetZoom(CalculateActualSizeZoom());
-        Invalidate();
+        SetActualSizeZoom();
         return true;
 
     default:
@@ -1724,7 +1728,7 @@ void App::Render() {
     }
 }
 
-void App::ShowContextMenu(HWND hwnd, int screenX, int screenY) {
+void App::ShowContextMenu(HWND hwnd, int clientX, int clientY) {
     HMENU menu = CreatePopupMenu();
     if (!menu) return;
 
@@ -1763,7 +1767,7 @@ void App::ShowContextMenu(HWND hwnd, int screenX, int screenY) {
     AppendMenuW(menu, MF_STRING | editSafeFlag, CMD_DELETE, L"Delete\tDel");
 
     // Show and handle
-    POINT pt = { screenX, screenY };
+    POINT pt = { clientX, clientY };
     ClientToScreen(hwnd, &pt);
     TrackPopupMenu(menu, TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwnd, nullptr);
     DestroyMenu(menu);
@@ -1780,12 +1784,7 @@ void App::OnContextMenuCommand(UINT commandId) {
     case CMD_ROTATE_CW:     RotateCW(); break;
     case CMD_ROTATE_CCW:    RotateCCW(); break;
     case CMD_FIT_TO_WINDOW: ResetZoom(); break;
-    case CMD_ACTUAL_SIZE:
-        if (m_renderer && m_currentImage) {
-            m_renderer->SetZoom(CalculateActualSizeZoom());
-            Invalidate();
-        }
-        break;
+    case CMD_ACTUAL_SIZE:   SetActualSizeZoom(); break;
     case CMD_FULLSCREEN:    ToggleFullscreen(); break;
     case CMD_DELETE:        DeleteCurrentFile(); break;
     }

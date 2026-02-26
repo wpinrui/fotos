@@ -42,7 +42,7 @@ public:
     void OnMouseMove(int x, int y);
     void OnResize(int width, int height);
     void Render();
-    void ShowContextMenu(HWND hwnd, int screenX, int screenY);
+    void ShowContextMenu(HWND hwnd, int clientX, int clientY);
     void OnContextMenuCommand(UINT commandId);
 
     // File operations
@@ -86,6 +86,7 @@ private:
     void ZoomIn();
     void ZoomOut();
     void ResetZoom();
+    void SetActualSizeZoom();
     float CalculateActualSizeZoom() const;
 
     // Phase 2 features
