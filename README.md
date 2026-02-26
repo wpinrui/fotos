@@ -1,4 +1,4 @@
-# angel-foto
+# fotos
 
 A fast, minimal photo viewer for Windows. Built to fix the pain points of the default Photos app.
 
@@ -64,12 +64,12 @@ cmake -B build -A x64
 cmake --build build --config Release
 ```
 
-Output: `build\Release\angel-foto.exe`
+Output: `build\Release\fotos.exe`
 
 ## Usage
 
 ```powershell
-angel-foto.exe "C:\path\to\image.jpg"
+fotos.exe "C:\path\to\image.jpg"
 ```
 
 Or drag-drop an image onto the executable.

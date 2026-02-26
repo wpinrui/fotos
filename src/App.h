@@ -195,7 +195,7 @@ private:
     static constexpr float JPEG_SAVE_QUALITY = 0.9f;
 
     // File naming constants
-    static constexpr wchar_t WALLPAPER_TEMP_PREFIX[] = L"angel_foto_wallpaper";
+    static constexpr wchar_t WALLPAPER_TEMP_PREFIX[] = L"fotos_wallpaper";
     static constexpr wchar_t PNG_CLIPBOARD_FORMAT[] = L"PNG";
     static constexpr wchar_t EDITED_FILE_SUFFIX[] = L"_edited";
     static constexpr wchar_t TEMP_FILE_PREFIX[] = L"~temp_";

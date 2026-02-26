@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(angel-foto VERSION 0.1.0 LANGUAGES CXX)
+project(fotos VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -31,7 +31,7 @@ set(HEADERS
 )
 
 # Create executable
-add_executable(${PROJECT_NAME} WIN32 ${SOURCES} ${HEADERS} resources/angel-foto.manifest)
+add_executable(${PROJECT_NAME} WIN32 ${SOURCES} ${HEADERS} resources/fotos.manifest)
 
 # Precompiled header
 target_precompile_headers(${PROJECT_NAME} PRIVATE src/pch.h)

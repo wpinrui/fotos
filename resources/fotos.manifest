@@ -3,10 +3,10 @@
   <assemblyIdentity
     version="0.1.0.0"
     processorArchitecture="*"
-    name="AngelFoto"
+    name="Fotos"
     type="win32"
   />
-  <description>angel-foto - Fast Windows Photo Viewer</description>
+  <description>fotos - Fast Windows Photo Viewer</description>
 
   <!-- Windows 10/11 compatibility -->
   <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
