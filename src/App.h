@@ -212,6 +212,7 @@ private:
     void OnAnimationTick();
     static void CALLBACK AnimationTimerProc(HWND hwnd, UINT msg, UINT_PTR id, DWORD time);
     ToolbarMode CalculateToolbarMode() const;
+    float CalculateToolbarStripWidth(float btnWidth, int minPriority) const;
 
     // Toast
     void ShowToast(const std::wstring& message);

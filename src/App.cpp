@@ -1889,35 +1889,22 @@ void App::InitToolbarButtons() {
     };
 }
 
+float App::CalculateToolbarStripWidth(float btnWidth, int minPriority) const {
+    float width = TOOLBAR_PADDING;
+    for (const auto& def : m_toolbarDefs) {
+        if (!def.isSeparator && def.priority < minPriority) continue;
+        width += def.isSeparator ? TOOLBAR_SEPARATOR_WIDTH : (btnWidth + TOOLBAR_PADDING);
+    }
+    return width + TOOLBAR_PADDING;
+}
+
 App::ToolbarMode App::CalculateToolbarMode() const {
     if (!m_window) return ToolbarMode::Full;
-    float windowW = static_cast<float>(m_window->GetWidth());
+    float maxWidth = static_cast<float>(m_window->GetWidth()) * TOOLBAR_MAX_WIDTH_RATIO;
 
-    // Calculate full-size width
-    float fullWidth = TOOLBAR_PADDING;
-    for (const auto& def : m_toolbarDefs) {
-        fullWidth += def.isSeparator ? TOOLBAR_SEPARATOR_WIDTH : (TOOLBAR_BTN_WIDTH + TOOLBAR_PADDING);
-    }
-    fullWidth += TOOLBAR_PADDING;
-    if (fullWidth <= windowW * TOOLBAR_MAX_WIDTH_RATIO) return ToolbarMode::Full;
-
-    // Calculate icon-only width
-    float iconWidth = TOOLBAR_PADDING;
-    for (const auto& def : m_toolbarDefs) {
-        iconWidth += def.isSeparator ? TOOLBAR_SEPARATOR_WIDTH : (TOOLBAR_ICON_BTN_WIDTH + TOOLBAR_PADDING);
-    }
-    iconWidth += TOOLBAR_PADDING;
-    if (iconWidth <= windowW * TOOLBAR_MAX_WIDTH_RATIO) return ToolbarMode::IconOnly;
-
-    // Calculate compact width (only high-priority buttons, icon-only)
-    float compactWidth = TOOLBAR_PADDING;
-    for (const auto& def : m_toolbarDefs) {
-        if (!def.isSeparator && def.priority < COMPACT_PRIORITY_THRESHOLD) continue;
-        compactWidth += def.isSeparator ? TOOLBAR_SEPARATOR_WIDTH : (TOOLBAR_ICON_BTN_WIDTH + TOOLBAR_PADDING);
-    }
-    compactWidth += TOOLBAR_PADDING;
-    if (compactWidth <= windowW * TOOLBAR_MAX_WIDTH_RATIO) return ToolbarMode::Compact;
-
+    if (CalculateToolbarStripWidth(TOOLBAR_BTN_WIDTH, 0) <= maxWidth) return ToolbarMode::Full;
+    if (CalculateToolbarStripWidth(TOOLBAR_ICON_BTN_WIDTH, 0) <= maxWidth) return ToolbarMode::IconOnly;
+    if (CalculateToolbarStripWidth(TOOLBAR_ICON_BTN_WIDTH, COMPACT_PRIORITY_THRESHOLD) <= maxWidth) return ToolbarMode::Compact;
     return ToolbarMode::Hidden;
 }
 
@@ -2229,7 +2216,7 @@ void App::CancelTooltip() {
 }
 
 void CALLBACK App::TooltipTimerProc(HWND hwnd, UINT msg, UINT_PTR id, DWORD time) {
-    (void)hwnd; (void)msg; (void)id; (void)time;
+    (void)hwnd; (void)msg; (void)time;
     if (!s_instance) return;
     KillTimer(s_instance->m_window->GetHwnd(), id);
     s_instance->m_tooltipTimerId = 0;
