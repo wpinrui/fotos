@@ -1872,7 +1872,7 @@ void App::InitToolbarButtons() {
         { L"\x25B6",  0xE76C, L"Next (\x2192)",             CMD_NAVIGATE_NEXT,  E::NeedsImage, false, 10 },
         sep(),
         { L"\x21BB",  0xE7AD, L"Rotate CW (R)",             CMD_ROTATE_CW,      E::NeedsImageNoEdit, false, 7 },
-        { L"\x21BA",  0xE7A7, L"Rotate CCW (Shift+R)",      CMD_ROTATE_CCW,     E::NeedsImageNoEdit, false, 6 },
+        { L"\x21BA",  0xF0E1, L"Rotate CCW (Shift+R)",      CMD_ROTATE_CCW,     E::NeedsImageNoEdit, false, 6 },
         sep(),
         { L"Fit",     0xE9A6, L"Fit to window (0)",         CMD_FIT_TO_WINDOW,  E::NeedsImage, false, 7 },
         { L"1:1",     0xE71E, L"Actual size (1)",           CMD_ACTUAL_SIZE,    E::NeedsImage, false, 4 },
@@ -1902,13 +1902,30 @@ App::ToolbarMode App::CalculateToolbarMode() const {
     iconWidth += TOOLBAR_PADDING;
     if (iconWidth <= windowW * TOOLBAR_MAX_WIDTH_RATIO) return ToolbarMode::IconOnly;
 
-    return ToolbarMode::Compact;
+    // Calculate compact width (only high-priority buttons, icon-only)
+    float compactWidth = TOOLBAR_PADDING;
+    for (const auto& def : m_toolbarDefs) {
+        if (!def.isSeparator && def.priority < COMPACT_PRIORITY_THRESHOLD) continue;
+        compactWidth += def.isSeparator ? TOOLBAR_SEPARATOR_WIDTH : (TOOLBAR_ICON_BTN_WIDTH + TOOLBAR_PADDING);
+    }
+    compactWidth += TOOLBAR_PADDING;
+    if (compactWidth <= windowW * TOOLBAR_MAX_WIDTH_RATIO) return ToolbarMode::Compact;
+
+    return ToolbarMode::Hidden;
 }
 
 void App::UpdateToolbarRenderData() {
     if (!m_renderer || !m_window) return;
 
     m_toolbarMode = CalculateToolbarMode();
+
+    if (m_toolbarMode == ToolbarMode::Hidden) {
+        m_visibleButtonIndices.clear();
+        m_toolbarButtonRects.clear();
+        m_renderer->ClearToolbar();
+        return;
+    }
+
     float windowW = static_cast<float>(m_window->GetWidth());
     float btnWidth = (m_toolbarMode == ToolbarMode::Full) ? TOOLBAR_BTN_WIDTH : TOOLBAR_ICON_BTN_WIDTH;
     bool useIcon = m_useIconFont;

@@ -78,7 +78,7 @@ private:
 
     // Toolbar button enable conditions
     enum class EnableFlag { AlwaysEnabled, NeedsImage, NeedsImageNoEdit };
-    enum class ToolbarMode { Full, IconOnly, Compact };
+    enum class ToolbarMode { Full, IconOnly, Compact, Hidden };
     enum class FadeDirection { None, In, Out };
     enum class ToastPhase { None, FadeIn, Visible, FadeOut };
 
