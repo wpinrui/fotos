@@ -13,6 +13,12 @@ App::App() {
 
 App::~App() {
     StopGifAnimation();
+    StopAnimationTimer();
+    CancelTooltip();
+    if (m_toolbarHideTimerId != 0 && m_window) {
+        KillTimer(m_window->GetHwnd(), m_toolbarHideTimerId);
+        m_toolbarHideTimerId = 0;
+    }
     if (m_imageCache) {
         m_imageCache->Shutdown();
     }
@@ -2111,6 +2117,7 @@ void CALLBACK App::AnimationTimerProc(HWND hwnd, UINT msg, UINT_PTR id, DWORD ti
 
 void App::OnAnimationTick() {
     bool needsRedraw = false;
+    bool toolbarChanged = false;
     bool animationActive = false;
 
     // Toolbar fade
@@ -2122,7 +2129,7 @@ void App::OnAnimationTick() {
         } else {
             animationActive = true;
         }
-        needsRedraw = true;
+        toolbarChanged = true;
     } else if (m_toolbarFade == FadeDirection::Out) {
         m_toolbarOpacity -= ANIMATION_INTERVAL_MS / FADE_OUT_DURATION_MS;
         if (m_toolbarOpacity <= 0.0f) {
@@ -2132,7 +2139,7 @@ void App::OnAnimationTick() {
         } else {
             animationActive = true;
         }
-        needsRedraw = true;
+        toolbarChanged = true;
     }
 
     // Toast phase machine
@@ -2174,8 +2181,12 @@ void App::OnAnimationTick() {
         needsRedraw = true;
     }
 
-    if (needsRedraw) {
+    if (toolbarChanged) {
         UpdateToolbarRenderData();
+        needsRedraw = true;
+    }
+
+    if (needsRedraw) {
         Invalidate();
     }
 
@@ -2243,6 +2254,6 @@ void CALLBACK App::TooltipTimerProc(HWND hwnd, UINT msg, UINT_PTR id, DWORD time
     td.anchorRect = anchorRect;
     td.text = s_instance->m_toolbarDefs[idx].tooltip;
     td.visible = true;
-    s_instance->m_renderer->SetTooltip(td);
+    if (s_instance->m_renderer) s_instance->m_renderer->SetTooltip(td);
     s_instance->Invalidate();
 }
