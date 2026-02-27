@@ -65,6 +65,39 @@ bool Renderer::Initialize(HWND hwnd) {
         m_toolbarTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
     }
 
+    // Create icon font (Segoe Fluent Icons) with explicit availability check
+    ComPtr<IDWriteFontCollection> fontCollection;
+    m_dwriteFactory->GetSystemFontCollection(&fontCollection);
+    if (fontCollection) {
+        UINT32 familyIndex = 0;
+        BOOL exists = FALSE;
+        fontCollection->FindFamilyName(ICON_FONT_NAME, &familyIndex, &exists);
+        if (exists) {
+            hr = m_dwriteFactory->CreateTextFormat(ICON_FONT_NAME, nullptr,
+                DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
+                ICON_FONT_SIZE, DEFAULT_LOCALE, &m_iconTextFormat);
+            if (SUCCEEDED(hr) && m_iconTextFormat) {
+                m_iconTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+                m_iconTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+                m_hasIconFont = true;
+            }
+        }
+    }
+
+    // Create tooltip text format
+    m_dwriteFactory->CreateTextFormat(DEFAULT_FONT_NAME, nullptr,
+        DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
+        TOOLTIP_FONT_SIZE, DEFAULT_LOCALE, &m_tooltipTextFormat);
+
+    // Create toast text format
+    m_dwriteFactory->CreateTextFormat(DEFAULT_FONT_NAME, nullptr,
+        DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
+        TOAST_FONT_SIZE, DEFAULT_LOCALE, &m_toastTextFormat);
+    if (m_toastTextFormat) {
+        m_toastTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+        m_toastTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+    }
+
     try {
         CreateDeviceResources();
     } catch (...) {
@@ -475,6 +508,8 @@ void Renderer::Render() {
 
     // Toolbar draws on top of everything, even without an image
     RenderToolbar();
+    RenderTooltip();
+    RenderToast();
 
     HRESULT hr = m_deviceContext->EndDraw();
 
@@ -564,13 +599,119 @@ void Renderer::RenderToolbar() {
             m_deviceContext->FillRoundedRectangle(hoverRect, hoverBrush.Get());
         }
 
-        // Draw label text
+        // Draw icon or text label
         auto* brush = btn.enabled ? textBrush.Get() : disabledBrush.Get();
-        m_deviceContext->DrawText(
-            btn.label.c_str(),
-            static_cast<UINT32>(btn.label.length()),
-            m_toolbarTextFormat.Get(),
-            btn.rect,
-            brush);
+        if (btn.useIcon && btn.iconCodepoint != 0 && m_hasIconFont && m_iconTextFormat) {
+            wchar_t glyphStr[2] = { btn.iconCodepoint, 0 };
+            m_deviceContext->DrawText(glyphStr, 1, m_iconTextFormat.Get(), btn.rect, brush);
+        } else {
+            m_deviceContext->DrawText(
+                btn.label.c_str(),
+                static_cast<UINT32>(btn.label.length()),
+                m_toolbarTextFormat.Get(),
+                btn.rect,
+                brush);
+        }
     }
+}
+
+void Renderer::SetTooltip(const TooltipData& tooltip) { m_tooltip = tooltip; }
+void Renderer::ClearTooltip() { m_tooltip.visible = false; }
+
+void Renderer::SetToast(const std::wstring& message, float opacity) {
+    m_toastMessage = message;
+    m_toastOpacity = opacity;
+}
+
+void Renderer::ClearToast() {
+    m_toastMessage.clear();
+    m_toastOpacity = 0.0f;
+}
+
+void Renderer::RenderTooltip() {
+    if (!m_tooltip.visible || m_tooltip.text.empty() || !m_tooltipTextFormat || !m_dwriteFactory) return;
+
+    // Measure text to size the tooltip
+    ComPtr<IDWriteTextLayout> layout;
+    m_dwriteFactory->CreateTextLayout(m_tooltip.text.c_str(),
+        static_cast<UINT32>(m_tooltip.text.length()),
+        m_tooltipTextFormat.Get(), TOOLTIP_MAX_WIDTH, 50.0f, &layout);
+    if (!layout) return;
+
+    DWRITE_TEXT_METRICS metrics;
+    layout->GetMetrics(&metrics);
+
+    float tooltipW = metrics.width + TOOLTIP_PADDING_H * 2;
+    float tooltipH = metrics.height + TOOLTIP_PADDING_V * 2;
+
+    // Position below the anchor button, centered
+    float anchorCenterX = (m_tooltip.anchorRect.left + m_tooltip.anchorRect.right) / 2.0f;
+    float tooltipLeft = anchorCenterX - tooltipW / 2.0f;
+    float tooltipTop = m_tooltip.anchorRect.bottom + TOOLTIP_OFFSET_Y;
+
+    // Clamp to window bounds
+    float margin = 4.0f;
+    tooltipLeft = std::max(margin, std::min(tooltipLeft, static_cast<float>(m_width) - tooltipW - margin));
+
+    D2D1_RECT_F tipRect = D2D1::RectF(tooltipLeft, tooltipTop, tooltipLeft + tooltipW, tooltipTop + tooltipH);
+
+    // Draw background
+    ComPtr<ID2D1SolidColorBrush> bgBrush;
+    m_deviceContext->CreateSolidColorBrush(Colors::TOOLTIP_BG, &bgBrush);
+    if (!bgBrush) return;
+    D2D1_ROUNDED_RECT roundedRect = { tipRect, TOOLTIP_CORNER_RADIUS, TOOLTIP_CORNER_RADIUS };
+    m_deviceContext->FillRoundedRectangle(roundedRect, bgBrush.Get());
+
+    // Draw text
+    ComPtr<ID2D1SolidColorBrush> textBrush;
+    m_deviceContext->CreateSolidColorBrush(Colors::WHITE, &textBrush);
+    if (!textBrush) return;
+    D2D1_RECT_F textRect = D2D1::RectF(
+        tipRect.left + TOOLTIP_PADDING_H, tipRect.top + TOOLTIP_PADDING_V,
+        tipRect.right - TOOLTIP_PADDING_H, tipRect.bottom - TOOLTIP_PADDING_V);
+    m_deviceContext->DrawText(m_tooltip.text.c_str(),
+        static_cast<UINT32>(m_tooltip.text.length()),
+        m_tooltipTextFormat.Get(), textRect, textBrush.Get());
+}
+
+void Renderer::RenderToast() {
+    if (m_toastMessage.empty() || m_toastOpacity <= 0.0f || !m_toastTextFormat || !m_dwriteFactory) return;
+
+    // Measure text
+    ComPtr<IDWriteTextLayout> layout;
+    m_dwriteFactory->CreateTextLayout(m_toastMessage.c_str(),
+        static_cast<UINT32>(m_toastMessage.length()),
+        m_toastTextFormat.Get(), TOAST_MAX_WIDTH, 50.0f, &layout);
+    if (!layout) return;
+
+    DWRITE_TEXT_METRICS metrics;
+    layout->GetMetrics(&metrics);
+
+    float toastW = metrics.width + TOAST_PADDING_H * 2;
+    float toastH = metrics.height + TOAST_PADDING_V * 2;
+
+    // Bottom center
+    float toastLeft = (static_cast<float>(m_width) - toastW) / 2.0f;
+    float toastTop = static_cast<float>(m_height) - TOAST_BOTTOM_MARGIN - toastH;
+
+    D2D1_RECT_F toastRect = D2D1::RectF(toastLeft, toastTop, toastLeft + toastW, toastTop + toastH);
+
+    // Draw background with opacity
+    ComPtr<ID2D1SolidColorBrush> bgBrush;
+    D2D1_COLOR_F bg = Colors::TOAST_BG;
+    bg.a *= m_toastOpacity;
+    m_deviceContext->CreateSolidColorBrush(bg, &bgBrush);
+    if (!bgBrush) return;
+    D2D1_ROUNDED_RECT rounded = { toastRect, TOAST_CORNER_RADIUS, TOAST_CORNER_RADIUS };
+    m_deviceContext->FillRoundedRectangle(rounded, bgBrush.Get());
+
+    // Draw text with opacity
+    ComPtr<ID2D1SolidColorBrush> textBrush;
+    D2D1_COLOR_F textColor = Colors::WHITE;
+    textColor.a *= m_toastOpacity;
+    m_deviceContext->CreateSolidColorBrush(textColor, &textBrush);
+    if (!textBrush) return;
+    m_deviceContext->DrawText(m_toastMessage.c_str(),
+        static_cast<UINT32>(m_toastMessage.length()),
+        m_toastTextFormat.Get(), toastRect, textBrush.Get());
 }

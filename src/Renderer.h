@@ -53,12 +53,28 @@ public:
     struct ToolbarButton {
         D2D1_RECT_F rect;       // Screen-space bounds
         std::wstring label;
+        wchar_t iconCodepoint = 0;
+        bool useIcon = false;
         bool enabled = true;
         bool hovered = false;
         bool isSeparator = false;
     };
     void SetToolbar(const std::vector<ToolbarButton>& buttons, D2D1_RECT_F bounds, float opacity);
     void ClearToolbar();
+    bool HasIconFont() const { return m_hasIconFont; }
+
+    // Tooltip overlay
+    struct TooltipData {
+        D2D1_RECT_F anchorRect;
+        std::wstring text;
+        bool visible = false;
+    };
+    void SetTooltip(const TooltipData& tooltip);
+    void ClearTooltip();
+
+    // Toast notification
+    void SetToast(const std::wstring& message, float opacity);
+    void ClearToast();
 
     // Get image rect in screen coordinates (for coordinate transforms)
     D2D1_RECT_F GetScreenImageRect() const;
@@ -82,6 +98,8 @@ private:
     void RenderTextOverlays(const D2D1_RECT_F& screenRect);
     void RenderCropOverlay();
     void RenderToolbar();
+    void RenderTooltip();
+    void RenderToast();
 
     HWND m_hwnd = nullptr;
     int m_width = 0;
@@ -125,6 +143,19 @@ private:
     bool m_toolbarVisible = false;
     ComPtr<IDWriteTextFormat> m_toolbarTextFormat;
 
+    // Icon font
+    ComPtr<IDWriteTextFormat> m_iconTextFormat;
+    bool m_hasIconFont = false;
+
+    // Tooltip
+    TooltipData m_tooltip;
+    ComPtr<IDWriteTextFormat> m_tooltipTextFormat;
+
+    // Toast
+    std::wstring m_toastMessage;
+    float m_toastOpacity = 0.0f;
+    ComPtr<IDWriteTextFormat> m_toastTextFormat;
+
     // Background color (dark)
     D2D1_COLOR_F m_backgroundColor = Colors::DARK_GRAY;
 
@@ -149,4 +180,24 @@ private:
     static constexpr float TOOLBAR_CORNER_RADIUS = 6.0f;
     static constexpr float TOOLBAR_HOVER_OPACITY = 0.3f;
     static constexpr float TOOLBAR_SEPARATOR_LINE_WIDTH = 1.0f;
+
+    // Icon font constants
+    static constexpr float ICON_FONT_SIZE = 16.0f;
+    static constexpr wchar_t ICON_FONT_NAME[] = L"Segoe Fluent Icons";
+
+    // Tooltip rendering constants
+    static constexpr float TOOLTIP_FONT_SIZE = 11.0f;
+    static constexpr float TOOLTIP_PADDING_H = 8.0f;
+    static constexpr float TOOLTIP_PADDING_V = 4.0f;
+    static constexpr float TOOLTIP_CORNER_RADIUS = 4.0f;
+    static constexpr float TOOLTIP_OFFSET_Y = 4.0f;
+    static constexpr float TOOLTIP_MAX_WIDTH = 500.0f;
+
+    // Toast rendering constants
+    static constexpr float TOAST_FONT_SIZE = 13.0f;
+    static constexpr float TOAST_PADDING_H = 16.0f;
+    static constexpr float TOAST_PADDING_V = 10.0f;
+    static constexpr float TOAST_CORNER_RADIUS = 8.0f;
+    static constexpr float TOAST_BOTTOM_MARGIN = 40.0f;
+    static constexpr float TOAST_MAX_WIDTH = 600.0f;
 };

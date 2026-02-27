@@ -414,6 +414,9 @@ bool App::Initialize(HINSTANCE hInstance, int nCmdShow, const std::wstring& init
 
     // Initialize toolbar
     InitToolbarButtons();
+    m_useIconFont = m_renderer->HasIconFont();
+    m_toolbarOpacity = 1.0f;  // Start visible
+    m_toolbarFade = FadeDirection::None;
     UpdateToolbarRenderData();
     ResetToolbarTimer();
 
@@ -565,6 +568,7 @@ void App::ToggleFullscreen() {
 void App::DeleteCurrentFile() {
     if (m_navigator->DeleteCurrentFile()) {
         LoadCurrentImage();
+        ShowToast(L"File deleted");
     }
 }
 
@@ -706,6 +710,7 @@ void App::CopyToClipboard() {
         }
 
         CloseClipboard();
+        ShowToast(L"Copied to clipboard");
     }
 
     // Clean up any handles not taken by clipboard
@@ -764,6 +769,7 @@ void App::SetAsWallpaper() {
         SystemParametersInfoW(SPI_SETDESKWALLPAPER, 0,
             const_cast<wchar_t*>(wallpaperPath.c_str()),
             SPIF_UPDATEINIFILE | SPIF_SENDCHANGE);
+        ShowToast(L"Wallpaper set");
     } catch (...) {
         // Copy failed
     }
@@ -836,6 +842,7 @@ void App::SaveImageAsCopy(const fs::path& origPath) {
     UpdateRendererText();
     Invalidate();
 
+    ShowToast(L"Image saved");
     FlashWindow(m_window->GetHwnd(), TRUE);
 }
 
@@ -865,6 +872,7 @@ void App::SaveImageOverwrite(const fs::path& origPath, const std::wstring& saved
     m_navigator->SetCurrentFile(savedFilePath);
     LoadCurrentImage();
 
+    ShowToast(L"Image saved");
     FlashWindow(m_window->GetHwnd(), TRUE);
 }
 
@@ -915,7 +923,9 @@ void App::SaveImageAs() {
             hr = item->GetDisplayName(SIGDN_FILESYSPATH, &filePath);
             if (SUCCEEDED(hr)) {
                 // Save with transformations applied
-                SaveImageToFile(filePath);
+                if (SaveImageToFile(filePath)) {
+                    ShowToast(L"Image saved");
+                }
                 CoTaskMemFree(filePath);
             }
         }
@@ -1646,6 +1656,8 @@ void App::HandlePanMouseDown(int x, int y) {
 }
 
 void App::OnMouseDown(int x, int y) {
+    CancelTooltip();
+
     // Toolbar: intercept clicks on toolbar buttons
     int hitIndex = HitTestToolbar(x, y);
     if (hitIndex >= 0 && hitIndex < static_cast<int>(m_toolbarDefs.size())) {
@@ -1737,6 +1749,12 @@ void App::OnMouseMove(int x, int y) {
         m_toolbarHoverIndex = hitIndex;
         UpdateToolbarRenderData();
         Invalidate();
+
+        // Tooltip: cancel current, start new timer if hovering a button
+        CancelTooltip();
+        if (hitIndex >= 0 && !m_toolbarDefs[hitIndex].isSeparator) {
+            StartTooltipTimer(hitIndex);
+        }
     }
 
     if (m_isCropDragging) {
@@ -1839,44 +1857,96 @@ bool App::OnContextMenuCommand(UINT commandId) {
 
 void App::InitToolbarButtons() {
     using E = EnableFlag;
-    auto sep = [&]() -> ToolbarButtonDef { return { L"", 0, E::AlwaysEnabled, true }; };
+    auto sep = [&]() -> ToolbarButtonDef { return { L"", 0, L"", 0, E::AlwaysEnabled, true, 10 }; };
     m_toolbarDefs = {
-        { L"Open",   CMD_OPEN_IMAGE,    E::AlwaysEnabled },
-        { L"Folder", CMD_OPEN_FOLDER,   E::AlwaysEnabled },
+        { L"Open",    0xE8E5, L"Open image (Ctrl+O)",       CMD_OPEN_IMAGE,     E::AlwaysEnabled, false, 10 },
+        { L"Folder",  0xE8B7, L"Open folder (Ctrl+F)",      CMD_OPEN_FOLDER,    E::AlwaysEnabled, false, 8 },
         sep(),
-        { L"Save",    CMD_SAVE,          E::NeedsImage },
-        { L"Save As", CMD_SAVE_AS,       E::NeedsImage },
+        { L"Save",    0xE74E, L"Save (Ctrl+S)",             CMD_SAVE,           E::NeedsImage, false, 9 },
+        { L"Save As", 0xE792, L"Save as (Ctrl+Shift+S)",    CMD_SAVE_AS,        E::NeedsImage, false, 5 },
         sep(),
-        { L"Copy",   CMD_COPY_CLIPBOARD, E::NeedsImage },
-        { L"Wallp.", CMD_SET_WALLPAPER,  E::NeedsImageNoEdit },
+        { L"Copy",    0xE8C8, L"Copy (Ctrl+C)",             CMD_COPY_CLIPBOARD, E::NeedsImage, false, 8 },
+        { L"Wallp.",  0xE7B5, L"Set as wallpaper (Ctrl+B)", CMD_SET_WALLPAPER,  E::NeedsImageNoEdit, false, 3 },
         sep(),
-        { L"\x25C0", CMD_NAVIGATE_PREV,  E::NeedsImage },
-        { L"\x25B6", CMD_NAVIGATE_NEXT,  E::NeedsImage },
+        { L"\x25C0",  0xE76B, L"Previous (\x2190)",         CMD_NAVIGATE_PREV,  E::NeedsImage, false, 10 },
+        { L"\x25B6",  0xE76C, L"Next (\x2192)",             CMD_NAVIGATE_NEXT,  E::NeedsImage, false, 10 },
         sep(),
-        { L"\x21BB", CMD_ROTATE_CW,      E::NeedsImageNoEdit },
-        { L"\x21BA", CMD_ROTATE_CCW,     E::NeedsImageNoEdit },
+        { L"\x21BB",  0xE7AD, L"Rotate CW (R)",             CMD_ROTATE_CW,      E::NeedsImageNoEdit, false, 7 },
+        { L"\x21BA",  0xE7A7, L"Rotate CCW (Shift+R)",      CMD_ROTATE_CCW,     E::NeedsImageNoEdit, false, 6 },
         sep(),
-        { L"Fit",    CMD_FIT_TO_WINDOW,  E::NeedsImage },
-        { L"1:1",    CMD_ACTUAL_SIZE,    E::NeedsImage },
-        { L"Full",   CMD_FULLSCREEN,     E::AlwaysEnabled },
+        { L"Fit",     0xE9A6, L"Fit to window (0)",         CMD_FIT_TO_WINDOW,  E::NeedsImage, false, 7 },
+        { L"1:1",     0xE71E, L"Actual size (1)",           CMD_ACTUAL_SIZE,    E::NeedsImage, false, 4 },
+        { L"Full",    0xE740, L"Fullscreen (F11)",          CMD_FULLSCREEN,     E::AlwaysEnabled, false, 5 },
         sep(),
-        { L"Del",    CMD_DELETE,         E::NeedsImageNoEdit },
+        { L"Del",     0xE74D, L"Delete (Del)",              CMD_DELETE,         E::NeedsImageNoEdit, false, 6 },
     };
+}
+
+App::ToolbarMode App::CalculateToolbarMode() const {
+    if (!m_window) return ToolbarMode::Full;
+    float windowW = static_cast<float>(m_window->GetWidth());
+
+    // Calculate full-size width
+    float fullWidth = TOOLBAR_PADDING;
+    for (const auto& def : m_toolbarDefs) {
+        fullWidth += def.isSeparator ? TOOLBAR_SEPARATOR_WIDTH : (TOOLBAR_BTN_WIDTH + TOOLBAR_PADDING);
+    }
+    fullWidth += TOOLBAR_PADDING;
+    if (fullWidth <= windowW * TOOLBAR_MAX_WIDTH_RATIO) return ToolbarMode::Full;
+
+    // Calculate icon-only width
+    float iconWidth = TOOLBAR_PADDING;
+    for (const auto& def : m_toolbarDefs) {
+        iconWidth += def.isSeparator ? TOOLBAR_SEPARATOR_WIDTH : (TOOLBAR_ICON_BTN_WIDTH + TOOLBAR_PADDING);
+    }
+    iconWidth += TOOLBAR_PADDING;
+    if (iconWidth <= windowW * TOOLBAR_MAX_WIDTH_RATIO) return ToolbarMode::IconOnly;
+
+    return ToolbarMode::Compact;
 }
 
 void App::UpdateToolbarRenderData() {
     if (!m_renderer || !m_window) return;
 
+    m_toolbarMode = CalculateToolbarMode();
     float windowW = static_cast<float>(m_window->GetWidth());
+    float btnWidth = (m_toolbarMode == ToolbarMode::Full) ? TOOLBAR_BTN_WIDTH : TOOLBAR_ICON_BTN_WIDTH;
+    bool useIcon = m_useIconFont;
 
-    // Calculate total toolbar width
-    float totalWidth = TOOLBAR_PADDING;
-    for (const auto& def : m_toolbarDefs) {
-        if (def.isSeparator) {
-            totalWidth += TOOLBAR_SEPARATOR_WIDTH;
-        } else {
-            totalWidth += TOOLBAR_BTN_WIDTH + TOOLBAR_PADDING;
+    // Build visible button indices (filter by priority in compact mode)
+    m_visibleButtonIndices.clear();
+    for (size_t i = 0; i < m_toolbarDefs.size(); ++i) {
+        if (m_toolbarMode == ToolbarMode::Compact && !m_toolbarDefs[i].isSeparator
+            && m_toolbarDefs[i].priority < COMPACT_PRIORITY_THRESHOLD) {
+            continue;
         }
+        m_visibleButtonIndices.push_back(i);
+    }
+
+    // Strip orphaned separators (leading, trailing, consecutive)
+    std::vector<size_t> cleaned;
+    for (size_t vi = 0; vi < m_visibleButtonIndices.size(); ++vi) {
+        size_t idx = m_visibleButtonIndices[vi];
+        if (!m_toolbarDefs[idx].isSeparator) {
+            cleaned.push_back(idx);
+        } else {
+            // Skip if first, last, or previous was also a separator
+            if (cleaned.empty()) continue;
+            if (vi + 1 >= m_visibleButtonIndices.size()) continue;
+            if (m_toolbarDefs[cleaned.back()].isSeparator) continue;
+            cleaned.push_back(idx);
+        }
+    }
+    // Remove trailing separator
+    if (!cleaned.empty() && m_toolbarDefs[cleaned.back()].isSeparator) {
+        cleaned.pop_back();
+    }
+    m_visibleButtonIndices = cleaned;
+
+    // Calculate total width
+    float totalWidth = TOOLBAR_PADDING;
+    for (size_t idx : m_visibleButtonIndices) {
+        totalWidth += m_toolbarDefs[idx].isSeparator ? TOOLBAR_SEPARATOR_WIDTH : (btnWidth + TOOLBAR_PADDING);
     }
     totalWidth += TOOLBAR_PADDING;
 
@@ -1895,8 +1965,8 @@ void App::UpdateToolbarRenderData() {
     float x = left + TOOLBAR_PADDING;
     float btnTop = top + TOOLBAR_PADDING;
 
-    for (size_t i = 0; i < m_toolbarDefs.size(); ++i) {
-        const auto& def = m_toolbarDefs[i];
+    for (size_t idx : m_visibleButtonIndices) {
+        const auto& def = m_toolbarDefs[idx];
 
         if (def.isSeparator) {
             D2D1_RECT_F sepRect = D2D1::RectF(x, btnTop, x + TOOLBAR_SEPARATOR_WIDTH, btnTop + TOOLBAR_BTN_HEIGHT);
@@ -1909,7 +1979,7 @@ void App::UpdateToolbarRenderData() {
 
             x += TOOLBAR_SEPARATOR_WIDTH;
         } else {
-            D2D1_RECT_F btnRect = D2D1::RectF(x, btnTop, x + TOOLBAR_BTN_WIDTH, btnTop + TOOLBAR_BTN_HEIGHT);
+            D2D1_RECT_F btnRect = D2D1::RectF(x, btnTop, x + btnWidth, btnTop + TOOLBAR_BTN_HEIGHT);
             m_toolbarButtonRects.push_back(btnRect);
 
             bool enabled = true;
@@ -1919,24 +1989,26 @@ void App::UpdateToolbarRenderData() {
             Renderer::ToolbarButton rb;
             rb.rect = btnRect;
             rb.label = def.label;
+            rb.iconCodepoint = def.iconCodepoint;
+            rb.useIcon = useIcon && def.iconCodepoint != 0;
             rb.enabled = enabled;
-            rb.hovered = (static_cast<int>(i) == m_toolbarHoverIndex);
+            rb.hovered = (static_cast<int>(idx) == m_toolbarHoverIndex);
             rb.isSeparator = false;
             renderButtons.push_back(rb);
 
-            x += TOOLBAR_BTN_WIDTH + TOOLBAR_PADDING;
+            x += btnWidth + TOOLBAR_PADDING;
         }
     }
 
-    if (m_toolbarVisible) {
-        m_renderer->SetToolbar(renderButtons, m_toolbarBounds, 1.0f);
+    if (m_toolbarOpacity > 0.0f) {
+        m_renderer->SetToolbar(renderButtons, m_toolbarBounds, m_toolbarOpacity);
     } else {
         m_renderer->ClearToolbar();
     }
 }
 
 int App::HitTestToolbar(int x, int y) const {
-    if (!m_toolbarVisible) return -1;
+    if (m_toolbarOpacity <= 0.0f) return -1;
 
     float fx = static_cast<float>(x);
     float fy = static_cast<float>(y);
@@ -1947,21 +2019,22 @@ int App::HitTestToolbar(int x, int y) const {
         return -1;
     }
 
-    for (size_t i = 0; i < m_toolbarButtonRects.size(); ++i) {
-        if (m_toolbarDefs[i].isSeparator) continue;
-        const auto& r = m_toolbarButtonRects[i];
+    // Iterate visible buttons and return original def index
+    for (size_t vi = 0; vi < m_visibleButtonIndices.size(); ++vi) {
+        size_t defIdx = m_visibleButtonIndices[vi];
+        if (m_toolbarDefs[defIdx].isSeparator) continue;
+        const auto& r = m_toolbarButtonRects[vi];
         if (fx >= r.left && fx <= r.right && fy >= r.top && fy <= r.bottom) {
-            return static_cast<int>(i);
+            return static_cast<int>(defIdx);
         }
     }
     return -1;
 }
 
 void App::ShowToolbar() {
-    if (!m_toolbarVisible) {
-        m_toolbarVisible = true;
-        UpdateToolbarRenderData();
-        Invalidate();
+    if (m_toolbarFade != FadeDirection::In && m_toolbarOpacity < 1.0f) {
+        m_toolbarFade = FadeDirection::In;
+        StartAnimationTimer();
     }
 
     if (m_cursorHidden) {
@@ -1973,14 +2046,12 @@ void App::ShowToolbar() {
 }
 
 void App::HideToolbar() {
-    m_toolbarVisible = false;
-    m_toolbarHoverIndex = -1;
-    m_cursorHidden = true;
-
-    if (m_renderer) {
-        m_renderer->ClearToolbar();
+    if (m_toolbarFade != FadeDirection::Out && m_toolbarOpacity > 0.0f) {
+        m_toolbarFade = FadeDirection::Out;
+        StartAnimationTimer();
     }
-    Invalidate();
+    m_toolbarHoverIndex = -1;
+    CancelTooltip();
 }
 
 void App::ResetToolbarTimer() {
@@ -2001,4 +2072,165 @@ void CALLBACK App::ToolbarTimerProc(HWND hwnd, UINT msg, UINT_PTR id, DWORD time
             s_instance->m_toolbarHideTimerId = 0;
         }
     }
+}
+
+// Animation timer (drives toolbar fade + toast fade)
+
+void App::StartAnimationTimer() {
+    if (m_animationTimerId == 0) {
+        m_animationTimerId = SetTimer(m_window->GetHwnd(), ANIMATION_TIMER_ID,
+            ANIMATION_INTERVAL_MS, AnimationTimerProc);
+    }
+}
+
+void App::StopAnimationTimer() {
+    if (m_animationTimerId != 0) {
+        KillTimer(m_window->GetHwnd(), m_animationTimerId);
+        m_animationTimerId = 0;
+    }
+}
+
+void CALLBACK App::AnimationTimerProc(HWND hwnd, UINT msg, UINT_PTR id, DWORD time) {
+    (void)hwnd; (void)msg; (void)id; (void)time;
+    if (s_instance) {
+        s_instance->OnAnimationTick();
+    }
+}
+
+void App::OnAnimationTick() {
+    bool needsRedraw = false;
+    bool animationActive = false;
+
+    // Toolbar fade
+    if (m_toolbarFade == FadeDirection::In) {
+        m_toolbarOpacity += ANIMATION_INTERVAL_MS / FADE_IN_DURATION_MS;
+        if (m_toolbarOpacity >= 1.0f) {
+            m_toolbarOpacity = 1.0f;
+            m_toolbarFade = FadeDirection::None;
+        } else {
+            animationActive = true;
+        }
+        needsRedraw = true;
+    } else if (m_toolbarFade == FadeDirection::Out) {
+        m_toolbarOpacity -= ANIMATION_INTERVAL_MS / FADE_OUT_DURATION_MS;
+        if (m_toolbarOpacity <= 0.0f) {
+            m_toolbarOpacity = 0.0f;
+            m_toolbarFade = FadeDirection::None;
+            m_cursorHidden = true;
+        } else {
+            animationActive = true;
+        }
+        needsRedraw = true;
+    }
+
+    // Toast phase machine
+    if (m_toastPhase != ToastPhase::None) {
+        DWORD elapsed = GetTickCount() - m_toastPhaseStartTime;
+        switch (m_toastPhase) {
+        case ToastPhase::FadeIn:
+            m_toastOpacity = std::min(1.0f, static_cast<float>(elapsed) / TOAST_FADE_IN_MS);
+            if (elapsed >= static_cast<DWORD>(TOAST_FADE_IN_MS)) {
+                m_toastPhase = ToastPhase::Visible;
+                m_toastPhaseStartTime = GetTickCount();
+            }
+            animationActive = true;
+            break;
+        case ToastPhase::Visible:
+            m_toastOpacity = 1.0f;
+            if (elapsed >= static_cast<DWORD>(TOAST_VISIBLE_MS)) {
+                m_toastPhase = ToastPhase::FadeOut;
+                m_toastPhaseStartTime = GetTickCount();
+            }
+            animationActive = true;
+            break;
+        case ToastPhase::FadeOut:
+            m_toastOpacity = 1.0f - std::min(1.0f, static_cast<float>(elapsed) / TOAST_FADE_OUT_MS);
+            if (elapsed >= static_cast<DWORD>(TOAST_FADE_OUT_MS)) {
+                m_toastPhase = ToastPhase::None;
+                m_toastOpacity = 0.0f;
+                m_toastMessage.clear();
+                if (m_renderer) m_renderer->ClearToast();
+            }
+            animationActive = true;
+            break;
+        default:
+            break;
+        }
+        if (m_toastPhase != ToastPhase::None && m_renderer) {
+            m_renderer->SetToast(m_toastMessage, m_toastOpacity);
+        }
+        needsRedraw = true;
+    }
+
+    if (needsRedraw) {
+        UpdateToolbarRenderData();
+        Invalidate();
+    }
+
+    if (!animationActive) {
+        StopAnimationTimer();
+    }
+}
+
+// Toast notification
+
+void App::ShowToast(const std::wstring& message) {
+    m_toastMessage = message;
+    m_toastPhase = ToastPhase::FadeIn;
+    m_toastOpacity = 0.0f;
+    m_toastPhaseStartTime = GetTickCount();
+    if (m_renderer) m_renderer->SetToast(message, 0.0f);
+    StartAnimationTimer();
+}
+
+// Tooltip
+
+void App::StartTooltipTimer(int buttonIndex) {
+    CancelTooltip();
+    m_tooltipButtonIndex = buttonIndex;
+    m_tooltipTimerId = SetTimer(m_window->GetHwnd(), TOOLTIP_TIMER_ID,
+        TOOLTIP_DELAY_MS, TooltipTimerProc);
+}
+
+void App::CancelTooltip() {
+    if (m_tooltipTimerId != 0) {
+        KillTimer(m_window->GetHwnd(), m_tooltipTimerId);
+        m_tooltipTimerId = 0;
+    }
+    if (m_tooltipVisible) {
+        m_tooltipVisible = false;
+        if (m_renderer) m_renderer->ClearTooltip();
+        Invalidate();
+    }
+    m_tooltipButtonIndex = -1;
+}
+
+void CALLBACK App::TooltipTimerProc(HWND hwnd, UINT msg, UINT_PTR id, DWORD time) {
+    (void)hwnd; (void)msg; (void)id; (void)time;
+    if (!s_instance) return;
+    KillTimer(s_instance->m_window->GetHwnd(), id);
+    s_instance->m_tooltipTimerId = 0;
+
+    int idx = s_instance->m_tooltipButtonIndex;
+    if (idx < 0 || idx >= static_cast<int>(s_instance->m_toolbarDefs.size())) return;
+    if (s_instance->m_toolbarDefs[idx].isSeparator) return;
+
+    // Show tooltip
+    s_instance->m_tooltipVisible = true;
+
+    // Find the visible rect for this def index
+    D2D1_RECT_F anchorRect = {};
+    for (size_t vi = 0; vi < s_instance->m_visibleButtonIndices.size(); ++vi) {
+        if (static_cast<int>(s_instance->m_visibleButtonIndices[vi]) == idx) {
+            anchorRect = s_instance->m_toolbarButtonRects[vi];
+            break;
+        }
+    }
+
+    Renderer::TooltipData td;
+    td.anchorRect = anchorRect;
+    td.text = s_instance->m_toolbarDefs[idx].tooltip;
+    td.visible = true;
+    s_instance->m_renderer->SetTooltip(td);
+    s_instance->Invalidate();
 }
