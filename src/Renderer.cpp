@@ -56,6 +56,15 @@ bool Renderer::Initialize(HWND hwnd) {
         __uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(m_dwriteFactory.GetAddressOf()));
     if (FAILED(hr)) return false;
 
+    // Create cached toolbar text format
+    m_dwriteFactory->CreateTextFormat(DEFAULT_FONT_NAME, nullptr,
+        DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL,
+        TOOLBAR_FONT_SIZE, DEFAULT_LOCALE, &m_toolbarTextFormat);
+    if (m_toolbarTextFormat) {
+        m_toolbarTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
+        m_toolbarTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
+    }
+
     try {
         CreateDeviceResources();
     } catch (...) {
@@ -464,6 +473,9 @@ void Renderer::Render() {
         RenderCropOverlay();
     }
 
+    // Toolbar draws on top of everything, even without an image
+    RenderToolbar();
+
     HRESULT hr = m_deviceContext->EndDraw();
 
     if (hr == D2DERR_RECREATE_TARGET) {
@@ -474,4 +486,91 @@ void Renderer::Render() {
     // Present
     DXGI_PRESENT_PARAMETERS presentParams = {};
     m_swapChain->Present1(1, 0, &presentParams);
+}
+
+void Renderer::SetToolbar(const std::vector<ToolbarButton>& buttons, D2D1_RECT_F bounds, float opacity) {
+    m_toolbarButtons = buttons;
+    m_toolbarBounds = bounds;
+    m_toolbarOpacity = opacity;
+    m_toolbarVisible = true;
+}
+
+void Renderer::ClearToolbar() {
+    m_toolbarVisible = false;
+}
+
+void Renderer::RenderToolbar() {
+    if (!m_toolbarVisible || !m_deviceContext || !m_toolbarTextFormat) return;
+    if (m_toolbarButtons.empty()) return;
+
+    // Draw rounded background
+    ComPtr<ID2D1SolidColorBrush> bgBrush;
+    D2D1_COLOR_F bgColor = Colors::TOOLBAR_BG;
+    bgColor.a *= m_toolbarOpacity;
+    m_deviceContext->CreateSolidColorBrush(bgColor, &bgBrush);
+    if (!bgBrush) return;
+
+    D2D1_ROUNDED_RECT roundedBg = {
+        m_toolbarBounds,
+        TOOLBAR_CORNER_RADIUS,
+        TOOLBAR_CORNER_RADIUS
+    };
+    m_deviceContext->FillRoundedRectangle(roundedBg, bgBrush.Get());
+
+    // Brushes for buttons
+    ComPtr<ID2D1SolidColorBrush> textBrush;
+    ComPtr<ID2D1SolidColorBrush> disabledBrush;
+    ComPtr<ID2D1SolidColorBrush> hoverBrush;
+    ComPtr<ID2D1SolidColorBrush> separatorBrush;
+
+    D2D1_COLOR_F whiteColor = Colors::WHITE;
+    whiteColor.a *= m_toolbarOpacity;
+    m_deviceContext->CreateSolidColorBrush(whiteColor, &textBrush);
+
+    D2D1_COLOR_F disabledColor = Colors::TOOLBAR_DISABLED;
+    disabledColor.a *= m_toolbarOpacity;
+    m_deviceContext->CreateSolidColorBrush(disabledColor, &disabledBrush);
+
+    D2D1_COLOR_F hoverColor = Colors::TOOLBAR_HOVER;
+    hoverColor.a *= m_toolbarOpacity;
+    m_deviceContext->CreateSolidColorBrush(hoverColor, &hoverBrush);
+
+    D2D1_COLOR_F sepColor = Colors::TOOLBAR_SEPARATOR;
+    sepColor.a *= m_toolbarOpacity;
+    m_deviceContext->CreateSolidColorBrush(sepColor, &separatorBrush);
+
+    if (!textBrush || !disabledBrush || !hoverBrush || !separatorBrush) return;
+
+    for (const auto& btn : m_toolbarButtons) {
+        if (btn.isSeparator) {
+            // Draw thin vertical separator line
+            float centerX = (btn.rect.left + btn.rect.right) / 2.0f;
+            float topY = btn.rect.top + 4.0f;
+            float bottomY = btn.rect.bottom - 4.0f;
+            m_deviceContext->DrawLine(
+                D2D1::Point2F(centerX, topY),
+                D2D1::Point2F(centerX, bottomY),
+                separatorBrush.Get(), TOOLBAR_SEPARATOR_LINE_WIDTH);
+            continue;
+        }
+
+        // Draw hover highlight
+        if (btn.hovered && btn.enabled) {
+            D2D1_ROUNDED_RECT hoverRect = {
+                btn.rect,
+                TOOLBAR_CORNER_RADIUS / 2.0f,
+                TOOLBAR_CORNER_RADIUS / 2.0f
+            };
+            m_deviceContext->FillRoundedRectangle(hoverRect, hoverBrush.Get());
+        }
+
+        // Draw label text
+        auto* brush = btn.enabled ? textBrush.Get() : disabledBrush.Get();
+        m_deviceContext->DrawText(
+            btn.label.c_str(),
+            static_cast<UINT32>(btn.label.length()),
+            m_toolbarTextFormat.Get(),
+            btn.rect,
+            brush);
+    }
 }

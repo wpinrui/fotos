@@ -49,6 +49,17 @@ public:
     };
     void SetTextOverlays(const std::vector<TextOverlay>& overlays);
 
+    // Toolbar overlay
+    struct ToolbarButton {
+        D2D1_RECT_F rect;       // Screen-space bounds
+        std::wstring label;
+        bool enabled = true;
+        bool hovered = false;
+        bool isSeparator = false;
+    };
+    void SetToolbar(const std::vector<ToolbarButton>& buttons, D2D1_RECT_F bounds, float opacity);
+    void ClearToolbar();
+
     // Get image rect in screen coordinates (for coordinate transforms)
     D2D1_RECT_F GetScreenImageRect() const;
 
@@ -70,6 +81,7 @@ private:
     void RenderMarkupStrokes(const D2D1_RECT_F& screenRect);
     void RenderTextOverlays(const D2D1_RECT_F& screenRect);
     void RenderCropOverlay();
+    void RenderToolbar();
 
     HWND m_hwnd = nullptr;
     int m_width = 0;
@@ -106,6 +118,13 @@ private:
     std::vector<TextOverlay> m_textOverlays;
     ComPtr<IDWriteFactory> m_dwriteFactory;
 
+    // Toolbar overlay
+    std::vector<ToolbarButton> m_toolbarButtons;
+    D2D1_RECT_F m_toolbarBounds = {};
+    float m_toolbarOpacity = 0.0f;
+    bool m_toolbarVisible = false;
+    ComPtr<IDWriteTextFormat> m_toolbarTextFormat;
+
     // Background color (dark)
     D2D1_COLOR_F m_backgroundColor = Colors::DARK_GRAY;
 
@@ -124,4 +143,10 @@ private:
     // Crop overlay constants
     static constexpr float CROP_DIM_OPACITY = 0.5f;
     static constexpr float CROP_BORDER_WIDTH = 2.0f;
+
+    // Toolbar rendering constants
+    static constexpr float TOOLBAR_FONT_SIZE = 12.0f;
+    static constexpr float TOOLBAR_CORNER_RADIUS = 6.0f;
+    static constexpr float TOOLBAR_HOVER_OPACITY = 0.3f;
+    static constexpr float TOOLBAR_SEPARATOR_LINE_WIDTH = 1.0f;
 };

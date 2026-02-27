@@ -28,6 +28,7 @@ public:
     void Render();
     void ShowContextMenu(int screenX, int screenY);
     bool OnContextMenuCommand(UINT commandId);
+    bool IsCursorHidden() const { return m_cursorHidden; }
 
     // File operations
     void OpenFile(const std::wstring& filePath);
@@ -71,6 +72,18 @@ private:
         CMD_ACTUAL_SIZE,
         CMD_FULLSCREEN,
         CMD_DELETE,
+        CMD_NAVIGATE_PREV = 1020,
+        CMD_NAVIGATE_NEXT,
+    };
+
+    // Toolbar button enable conditions
+    enum class EnableFlag { AlwaysEnabled, NeedsImage, NeedsImageNoEdit };
+
+    struct ToolbarButtonDef {
+        std::wstring label;
+        UINT commandId;
+        EnableFlag enableFlag;
+        bool isSeparator = false;
     };
 
     void LoadCurrentImage();
@@ -173,6 +186,15 @@ private:
     void HandleMarkupMouseMove(int x, int y);
     void HandleEraseMouseMove(int x, int y);
     void HandlePanMouseMove(int x, int y);
+
+    // Toolbar
+    void InitToolbarButtons();
+    void UpdateToolbarRenderData();
+    int HitTestToolbar(int x, int y) const;
+    void ShowToolbar();
+    void HideToolbar();
+    void ResetToolbarTimer();
+    static void CALLBACK ToolbarTimerProc(HWND hwnd, UINT msg, UINT_PTR id, DWORD time);
 
     std::unique_ptr<Window> m_window;
     std::unique_ptr<Renderer> m_renderer;
@@ -289,4 +311,22 @@ private:
     // Undo stack
     std::vector<EditState> m_undoStack;
     static constexpr size_t MAX_UNDO_LEVELS = 50;
+
+    // Toolbar state
+    std::vector<ToolbarButtonDef> m_toolbarDefs;
+    std::vector<D2D1_RECT_F> m_toolbarButtonRects;
+    D2D1_RECT_F m_toolbarBounds = {};
+    bool m_toolbarVisible = true;
+    int m_toolbarHoverIndex = -1;
+    UINT_PTR m_toolbarHideTimerId = 0;
+    bool m_cursorHidden = false;
+
+    // Toolbar constants
+    static constexpr UINT_PTR TOOLBAR_HIDE_TIMER_ID = 2;
+    static constexpr DWORD TOOLBAR_HIDE_DELAY_MS = 2000;
+    static constexpr float TOOLBAR_BTN_WIDTH = 52.0f;
+    static constexpr float TOOLBAR_BTN_HEIGHT = 28.0f;
+    static constexpr float TOOLBAR_PADDING = 4.0f;
+    static constexpr float TOOLBAR_TOP_MARGIN = 8.0f;
+    static constexpr float TOOLBAR_SEPARATOR_WIDTH = 12.0f;
 };

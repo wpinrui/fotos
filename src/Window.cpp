@@ -232,6 +232,13 @@ LRESULT Window::HandleMessage(UINT msg, WPARAM wParam, LPARAM lParam) {
         PostQuitMessage(0);
         return 0;
 
+    case WM_SETCURSOR:
+        if (LOWORD(lParam) == HTCLIENT && m_app && m_app->IsCursorHidden()) {
+            SetCursor(nullptr);
+            return TRUE;
+        }
+        return DefWindowProc(m_hwnd, msg, wParam, lParam);
+
     case WM_ERASEBKGND:
         return 1; // Prevent flicker - we handle all drawing
 
