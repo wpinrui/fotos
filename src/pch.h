@@ -76,4 +76,10 @@ namespace Colors {
     constexpr D2D1_COLOR_F RED = { 1.0f, 0.0f, 0.0f, 1.0f };
     constexpr D2D1_COLOR_F BLACK = { 0.0f, 0.0f, 0.0f, 1.0f };
     constexpr D2D1_COLOR_F DARK_GRAY = { 0.1f, 0.1f, 0.1f, 1.0f };
+    constexpr D2D1_COLOR_F TOOLBAR_BG = { 0.15f, 0.15f, 0.15f, 0.85f };
+    constexpr D2D1_COLOR_F TOOLBAR_HOVER = { 1.0f, 1.0f, 1.0f, 0.2f };
+    constexpr D2D1_COLOR_F TOOLBAR_DISABLED = { 0.5f, 0.5f, 0.5f, 1.0f };
+    constexpr D2D1_COLOR_F TOOLBAR_SEPARATOR = { 0.4f, 0.4f, 0.4f, 0.6f };
+    constexpr D2D1_COLOR_F TOAST_BG = { 0.12f, 0.12f, 0.12f, 0.90f };
+    constexpr D2D1_COLOR_F TOOLTIP_BG = { 0.10f, 0.10f, 0.10f, 0.95f };
 }

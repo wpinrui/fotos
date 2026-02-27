@@ -28,6 +28,7 @@ public:
     void Render();
     void ShowContextMenu(int screenX, int screenY);
     bool OnContextMenuCommand(UINT commandId);
+    bool IsCursorHidden() const { return m_cursorHidden; }
 
     // File operations
     void OpenFile(const std::wstring& filePath);
@@ -71,6 +72,25 @@ private:
         CMD_ACTUAL_SIZE,
         CMD_FULLSCREEN,
         CMD_DELETE,
+        CMD_NAVIGATE_PREV = 1020,
+        CMD_NAVIGATE_NEXT,
+    };
+
+    // Toolbar button enable conditions
+    enum class EnableFlag { AlwaysEnabled, NeedsImage, NeedsImageNoEdit };
+    enum class ToolbarMode { Full, IconOnly, Compact, Hidden };
+    enum class FadeDirection { None, In, Out };
+    enum class ToastPhase { None, FadeIn, Visible, FadeOut };
+
+    struct ToolbarButtonDef {
+        std::wstring label;
+        wchar_t iconCodepoint = 0;
+        std::wstring tooltip;
+        UINT commandId;
+        EnableFlag enableFlag;
+        bool isSeparator = false;
+        bool mirrorIcon = false;
+        int priority = 0;
     };
 
     void LoadCurrentImage();
@@ -142,6 +162,9 @@ private:
     // Window invalidation helper (DRY for repeated InvalidateRect calls)
     void Invalidate();
 
+    // Toolbar button enable helper (shared by OnMouseDown and UpdateToolbarRenderData)
+    bool IsToolbarButtonEnabled(const ToolbarButtonDef& def) const;
+
     // Edit state management
     void ClearEditState(bool clearRotation = true);
     void PushUndoState();
@@ -173,6 +196,31 @@ private:
     void HandleMarkupMouseMove(int x, int y);
     void HandleEraseMouseMove(int x, int y);
     void HandlePanMouseMove(int x, int y);
+
+    // Toolbar
+    void InitToolbarButtons();
+    void UpdateToolbarRenderData();
+    int HitTestToolbar(int x, int y) const;
+    void ShowToolbar();
+    void HideToolbar();
+    void ResetToolbarTimer();
+    static void CALLBACK ToolbarTimerProc(HWND hwnd, UINT msg, UINT_PTR id, DWORD time);
+
+    // Toolbar animation
+    void StartAnimationTimer();
+    void StopAnimationTimer();
+    void OnAnimationTick();
+    static void CALLBACK AnimationTimerProc(HWND hwnd, UINT msg, UINT_PTR id, DWORD time);
+    ToolbarMode CalculateToolbarMode() const;
+    float CalculateToolbarStripWidth(float btnWidth, int minPriority) const;
+
+    // Toast
+    void ShowToast(const std::wstring& message);
+
+    // Tooltip
+    void StartTooltipTimer(int buttonIndex);
+    void CancelTooltip();
+    static void CALLBACK TooltipTimerProc(HWND hwnd, UINT msg, UINT_PTR id, DWORD time);
 
     std::unique_ptr<Window> m_window;
     std::unique_ptr<Renderer> m_renderer;
@@ -289,4 +337,58 @@ private:
     // Undo stack
     std::vector<EditState> m_undoStack;
     static constexpr size_t MAX_UNDO_LEVELS = 50;
+
+    // Toolbar state
+    std::vector<ToolbarButtonDef> m_toolbarDefs;
+    std::vector<D2D1_RECT_F> m_toolbarButtonRects;
+    std::vector<size_t> m_visibleButtonIndices;
+    D2D1_RECT_F m_toolbarBounds = {};
+    int m_toolbarHoverIndex = -1;
+    UINT_PTR m_toolbarHideTimerId = 0;
+    bool m_cursorHidden = false;
+    bool m_useIconFont = false;
+    ToolbarMode m_toolbarMode = ToolbarMode::Full;
+
+    // Toolbar fade animation
+    FadeDirection m_toolbarFade = FadeDirection::None;
+    float m_toolbarOpacity = 0.0f;
+    UINT_PTR m_animationTimerId = 0;
+
+    // Toast state
+    std::wstring m_toastMessage;
+    ToastPhase m_toastPhase = ToastPhase::None;
+    float m_toastOpacity = 0.0f;
+    DWORD m_toastPhaseStartTime = 0;
+
+    // Tooltip state
+    int m_tooltipButtonIndex = -1;
+    bool m_tooltipVisible = false;
+    UINT_PTR m_tooltipTimerId = 0;
+
+    // Toolbar constants
+    static constexpr UINT_PTR TOOLBAR_HIDE_TIMER_ID = 2;
+    static constexpr DWORD TOOLBAR_HIDE_DELAY_MS = 2000;
+    static constexpr float TOOLBAR_BTN_WIDTH = 52.0f;
+    static constexpr float TOOLBAR_BTN_HEIGHT = 28.0f;
+    static constexpr float TOOLBAR_PADDING = 4.0f;
+    static constexpr float TOOLBAR_TOP_MARGIN = 8.0f;
+    static constexpr float TOOLBAR_SEPARATOR_WIDTH = 12.0f;
+    static constexpr float TOOLBAR_ICON_BTN_WIDTH = 36.0f;
+    static constexpr float TOOLBAR_MAX_WIDTH_RATIO = 0.9f;
+    static constexpr int COMPACT_PRIORITY_THRESHOLD = 6;
+
+    // Animation constants
+    static constexpr UINT_PTR ANIMATION_TIMER_ID = 4;
+    static constexpr DWORD ANIMATION_INTERVAL_MS = 16;
+    static constexpr float FADE_IN_DURATION_MS = 200.0f;
+    static constexpr float FADE_OUT_DURATION_MS = 200.0f;
+
+    // Toast constants
+    static constexpr float TOAST_FADE_IN_MS = 200.0f;
+    static constexpr float TOAST_VISIBLE_MS = 1500.0f;
+    static constexpr float TOAST_FADE_OUT_MS = 300.0f;
+
+    // Tooltip constants
+    static constexpr UINT_PTR TOOLTIP_TIMER_ID = 3;
+    static constexpr DWORD TOOLTIP_DELAY_MS = 500;
 };
