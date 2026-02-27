@@ -603,7 +603,18 @@ void Renderer::RenderToolbar() {
         auto* brush = btn.enabled ? textBrush.Get() : disabledBrush.Get();
         if (btn.useIcon && btn.iconCodepoint != 0 && m_hasIconFont && m_iconTextFormat) {
             wchar_t glyphStr[2] = { btn.iconCodepoint, 0 };
+            if (btn.mirrorIcon) {
+                float centerX = (btn.rect.left + btn.rect.right) / 2.0f;
+                float centerY = (btn.rect.top + btn.rect.bottom) / 2.0f;
+                auto mirror = D2D1::Matrix3x2F::Translation(-centerX, -centerY)
+                    * D2D1::Matrix3x2F::Scale(-1.0f, 1.0f)
+                    * D2D1::Matrix3x2F::Translation(centerX, centerY);
+                m_deviceContext->SetTransform(mirror);
+            }
             m_deviceContext->DrawText(glyphStr, 1, m_iconTextFormat.Get(), btn.rect, brush);
+            if (btn.mirrorIcon) {
+                m_deviceContext->SetTransform(D2D1::Matrix3x2F::Identity());
+            }
         } else {
             m_deviceContext->DrawText(
                 btn.label.c_str(),

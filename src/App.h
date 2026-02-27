@@ -89,6 +89,7 @@ private:
         UINT commandId;
         EnableFlag enableFlag;
         bool isSeparator = false;
+        bool mirrorIcon = false;
         int priority = 0;
     };
 

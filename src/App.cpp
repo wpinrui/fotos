@@ -1857,28 +1857,28 @@ bool App::OnContextMenuCommand(UINT commandId) {
 
 void App::InitToolbarButtons() {
     using E = EnableFlag;
-    auto sep = [&]() -> ToolbarButtonDef { return { L"", 0, L"", 0, E::AlwaysEnabled, true, 10 }; };
+    auto sep = [&]() -> ToolbarButtonDef { return { L"", 0, L"", 0, E::AlwaysEnabled, true, false, 10 }; };
     m_toolbarDefs = {
-        { L"Open",    0xE8E5, L"Open image (Ctrl+O)",       CMD_OPEN_IMAGE,     E::AlwaysEnabled, false, 10 },
-        { L"Folder",  0xE8B7, L"Open folder (Ctrl+F)",      CMD_OPEN_FOLDER,    E::AlwaysEnabled, false, 8 },
+        { L"Open",    0xE8E5, L"Open image (Ctrl+O)",       CMD_OPEN_IMAGE,     E::AlwaysEnabled,    false, false, 10 },
+        { L"Folder",  0xE8B7, L"Open folder (Ctrl+F)",      CMD_OPEN_FOLDER,    E::AlwaysEnabled,    false, false, 8 },
         sep(),
-        { L"Save",    0xE74E, L"Save (Ctrl+S)",             CMD_SAVE,           E::NeedsImage, false, 9 },
-        { L"Save As", 0xE792, L"Save as (Ctrl+Shift+S)",    CMD_SAVE_AS,        E::NeedsImage, false, 5 },
+        { L"Save",    0xE74E, L"Save (Ctrl+S)",             CMD_SAVE,           E::NeedsImage,       false, false, 9 },
+        { L"Save As", 0xE792, L"Save as (Ctrl+Shift+S)",    CMD_SAVE_AS,        E::NeedsImage,       false, false, 5 },
         sep(),
-        { L"Copy",    0xE8C8, L"Copy (Ctrl+C)",             CMD_COPY_CLIPBOARD, E::NeedsImage, false, 8 },
-        { L"Wallp.",  0xE7B5, L"Set as wallpaper (Ctrl+B)", CMD_SET_WALLPAPER,  E::NeedsImageNoEdit, false, 3 },
+        { L"Copy",    0xE8C8, L"Copy (Ctrl+C)",             CMD_COPY_CLIPBOARD, E::NeedsImage,       false, false, 8 },
+        { L"Wallp.",  0xE7B5, L"Set as wallpaper (Ctrl+B)", CMD_SET_WALLPAPER,  E::NeedsImageNoEdit, false, false, 3 },
         sep(),
-        { L"\x25C0",  0xE76B, L"Previous (\x2190)",         CMD_NAVIGATE_PREV,  E::NeedsImage, false, 10 },
-        { L"\x25B6",  0xE76C, L"Next (\x2192)",             CMD_NAVIGATE_NEXT,  E::NeedsImage, false, 10 },
+        { L"\x25C0",  0xE76B, L"Previous (\x2190)",         CMD_NAVIGATE_PREV,  E::NeedsImage,       false, false, 10 },
+        { L"\x25B6",  0xE76C, L"Next (\x2192)",             CMD_NAVIGATE_NEXT,  E::NeedsImage,       false, false, 10 },
         sep(),
-        { L"\x21BB",  0xE80C, L"Rotate CW (R)",             CMD_ROTATE_CW,      E::NeedsImageNoEdit, false, 7 },
-        { L"\x21BA",  0xE80D, L"Rotate CCW (Shift+R)",      CMD_ROTATE_CCW,     E::NeedsImageNoEdit, false, 6 },
+        { L"\x21BB",  0xE7AD, L"Rotate CW (R)",             CMD_ROTATE_CW,      E::NeedsImageNoEdit, false, false, 7 },
+        { L"\x21BA",  0xE7AD, L"Rotate CCW (Shift+R)",      CMD_ROTATE_CCW,     E::NeedsImageNoEdit, false, true,  6 },
         sep(),
-        { L"Fit",     0xE9A6, L"Fit to window (0)",         CMD_FIT_TO_WINDOW,  E::NeedsImage, false, 7 },
-        { L"1:1",     0xE71E, L"Actual size (1)",           CMD_ACTUAL_SIZE,    E::NeedsImage, false, 4 },
-        { L"Full",    0xE740, L"Fullscreen (F11)",          CMD_FULLSCREEN,     E::AlwaysEnabled, false, 5 },
+        { L"Fit",     0xE9A6, L"Fit to window (0)",         CMD_FIT_TO_WINDOW,  E::NeedsImage,       false, false, 7 },
+        { L"1:1",     0xE71E, L"Actual size (1)",           CMD_ACTUAL_SIZE,    E::NeedsImage,       false, false, 4 },
+        { L"Full",    0xE740, L"Fullscreen (F11)",          CMD_FULLSCREEN,     E::AlwaysEnabled,    false, false, 5 },
         sep(),
-        { L"Del",     0xE74D, L"Delete (Del)",              CMD_DELETE,         E::NeedsImageNoEdit, false, 6 },
+        { L"Del",     0xE74D, L"Delete (Del)",              CMD_DELETE,         E::NeedsImageNoEdit, false, false, 6 },
     };
 }
 
@@ -2008,6 +2008,7 @@ void App::UpdateToolbarRenderData() {
             rb.label = def.label;
             rb.iconCodepoint = def.iconCodepoint;
             rb.useIcon = useIcon && def.iconCodepoint != 0;
+            rb.mirrorIcon = def.mirrorIcon;
             rb.enabled = enabled;
             rb.hovered = (static_cast<int>(idx) == m_toolbarHoverIndex);
             rb.isSeparator = false;

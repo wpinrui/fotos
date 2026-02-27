@@ -55,6 +55,7 @@ public:
         std::wstring label;
         wchar_t iconCodepoint = 0;
         bool useIcon = false;
+        bool mirrorIcon = false;
         bool enabled = true;
         bool hovered = false;
         bool isSeparator = false;
