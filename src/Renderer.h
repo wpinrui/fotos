@@ -179,8 +179,8 @@ private:
     // Toolbar rendering constants
     static constexpr float TOOLBAR_FONT_SIZE = 12.0f;
     static constexpr float TOOLBAR_CORNER_RADIUS = 6.0f;
-    static constexpr float TOOLBAR_HOVER_OPACITY = 0.3f;
     static constexpr float TOOLBAR_SEPARATOR_LINE_WIDTH = 1.0f;
+    static constexpr float TOOLBAR_SEPARATOR_INSET = 4.0f;
 
     // Icon font constants
     static constexpr float ICON_FONT_SIZE = 16.0f;
@@ -201,4 +201,7 @@ private:
     static constexpr float TOAST_CORNER_RADIUS = 8.0f;
     static constexpr float TOAST_BOTTOM_MARGIN = 40.0f;
     static constexpr float TOAST_MAX_WIDTH = 600.0f;
+
+    // Shared text layout measurement height
+    static constexpr float TEXT_LAYOUT_MAX_HEIGHT = 50.0f;
 };

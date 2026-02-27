@@ -580,8 +580,8 @@ void Renderer::RenderToolbar() {
         if (btn.isSeparator) {
             // Draw thin vertical separator line
             float centerX = (btn.rect.left + btn.rect.right) / 2.0f;
-            float topY = btn.rect.top + 4.0f;
-            float bottomY = btn.rect.bottom - 4.0f;
+            float topY = btn.rect.top + TOOLBAR_SEPARATOR_INSET;
+            float bottomY = btn.rect.bottom - TOOLBAR_SEPARATOR_INSET;
             m_deviceContext->DrawLine(
                 D2D1::Point2F(centerX, topY),
                 D2D1::Point2F(centerX, bottomY),
@@ -646,7 +646,7 @@ void Renderer::RenderTooltip() {
     ComPtr<IDWriteTextLayout> layout;
     m_dwriteFactory->CreateTextLayout(m_tooltip.text.c_str(),
         static_cast<UINT32>(m_tooltip.text.length()),
-        m_tooltipTextFormat.Get(), TOOLTIP_MAX_WIDTH, 50.0f, &layout);
+        m_tooltipTextFormat.Get(), TOOLTIP_MAX_WIDTH, TEXT_LAYOUT_MAX_HEIGHT, &layout);
     if (!layout) return;
 
     DWRITE_TEXT_METRICS metrics;
@@ -661,8 +661,7 @@ void Renderer::RenderTooltip() {
     float tooltipTop = m_tooltip.anchorRect.bottom + TOOLTIP_OFFSET_Y;
 
     // Clamp to window bounds
-    float margin = 4.0f;
-    tooltipLeft = std::max(margin, std::min(tooltipLeft, static_cast<float>(m_width) - tooltipW - margin));
+    tooltipLeft = std::max(TOOLTIP_PADDING_V, std::min(tooltipLeft, static_cast<float>(m_width) - tooltipW - TOOLTIP_PADDING_V));
 
     D2D1_RECT_F tipRect = D2D1::RectF(tooltipLeft, tooltipTop, tooltipLeft + tooltipW, tooltipTop + tooltipH);
 
@@ -692,7 +691,7 @@ void Renderer::RenderToast() {
     ComPtr<IDWriteTextLayout> layout;
     m_dwriteFactory->CreateTextLayout(m_toastMessage.c_str(),
         static_cast<UINT32>(m_toastMessage.length()),
-        m_toastTextFormat.Get(), TOAST_MAX_WIDTH, 50.0f, &layout);
+        m_toastTextFormat.Get(), TOAST_MAX_WIDTH, TEXT_LAYOUT_MAX_HEIGHT, &layout);
     if (!layout) return;
 
     DWRITE_TEXT_METRICS metrics;

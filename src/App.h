@@ -162,6 +162,9 @@ private:
     // Window invalidation helper (DRY for repeated InvalidateRect calls)
     void Invalidate();
 
+    // Toolbar button enable helper (shared by OnMouseDown and UpdateToolbarRenderData)
+    bool IsToolbarButtonEnabled(const ToolbarButtonDef& def) const;
+
     // Edit state management
     void ClearEditState(bool clearRotation = true);
     void PushUndoState();

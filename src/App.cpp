@@ -1277,6 +1277,13 @@ void App::Invalidate() {
     InvalidateRect(m_window->GetHwnd(), nullptr, FALSE);
 }
 
+bool App::IsToolbarButtonEnabled(const ToolbarButtonDef& def) const {
+    bool hasImage = (m_currentImage != nullptr);
+    if (def.enableFlag == EnableFlag::NeedsImage) return hasImage;
+    if (def.enableFlag == EnableFlag::NeedsImageNoEdit) return hasImage && (m_editMode == EditMode::None);
+    return true;
+}
+
 void App::ApplyCrop() {
     if (m_editMode != EditMode::Crop || !m_currentImage) return;
 
@@ -1663,14 +1670,7 @@ void App::OnMouseDown(int x, int y) {
     if (hitIndex >= 0 && hitIndex < static_cast<int>(m_toolbarDefs.size())) {
         const auto& def = m_toolbarDefs[hitIndex];
         if (!def.isSeparator) {
-            // Check if button is enabled before dispatching
-            bool hasImage = (m_currentImage != nullptr);
-            bool inEditMode = (m_editMode != EditMode::None);
-            bool enabled = true;
-            if (def.enableFlag == EnableFlag::NeedsImage) enabled = hasImage;
-            else if (def.enableFlag == EnableFlag::NeedsImageNoEdit) enabled = hasImage && !inEditMode;
-
-            if (enabled) {
+            if (IsToolbarButtonEnabled(def)) {
                 OnContextMenuCommand(def.commandId);
                 UpdateToolbarRenderData();
                 Invalidate();
@@ -1752,7 +1752,8 @@ void App::OnMouseMove(int x, int y) {
 
         // Tooltip: cancel current, start new timer if hovering a button
         CancelTooltip();
-        if (hitIndex >= 0 && !m_toolbarDefs[hitIndex].isSeparator) {
+        if (hitIndex >= 0 && hitIndex < static_cast<int>(m_toolbarDefs.size())
+            && !m_toolbarDefs[hitIndex].isSeparator) {
             StartTooltipTimer(hitIndex);
         }
     }
@@ -1973,9 +1974,6 @@ void App::UpdateToolbarRenderData() {
     m_toolbarBounds = D2D1::RectF(left, top, left + totalWidth, top + TOOLBAR_BTN_HEIGHT + TOOLBAR_PADDING * 2);
 
     // Calculate button rects and build render data
-    bool hasImage = (m_currentImage != nullptr);
-    bool inEditMode = (m_editMode != EditMode::None);
-
     std::vector<Renderer::ToolbarButton> renderButtons;
     m_toolbarButtonRects.clear();
 
@@ -1999,17 +1997,13 @@ void App::UpdateToolbarRenderData() {
             D2D1_RECT_F btnRect = D2D1::RectF(x, btnTop, x + btnWidth, btnTop + TOOLBAR_BTN_HEIGHT);
             m_toolbarButtonRects.push_back(btnRect);
 
-            bool enabled = true;
-            if (def.enableFlag == EnableFlag::NeedsImage) enabled = hasImage;
-            else if (def.enableFlag == EnableFlag::NeedsImageNoEdit) enabled = hasImage && !inEditMode;
-
             Renderer::ToolbarButton rb;
             rb.rect = btnRect;
             rb.label = def.label;
             rb.iconCodepoint = def.iconCodepoint;
             rb.useIcon = useIcon && def.iconCodepoint != 0;
             rb.mirrorIcon = def.mirrorIcon;
-            rb.enabled = enabled;
+            rb.enabled = IsToolbarButtonEnabled(def);
             rb.hovered = (static_cast<int>(idx) == m_toolbarHoverIndex);
             rb.isSeparator = false;
             renderButtons.push_back(rb);
